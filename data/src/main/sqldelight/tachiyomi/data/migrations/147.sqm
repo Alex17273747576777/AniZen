@@ -1,0 +1,21 @@
+CREATE TABLE merge_group(
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    title_override TEXT,
+    cover_override TEXT,
+    override_source_ranking INTEGER AS Boolean NOT NULL DEFAULT 0
+);
+
+CREATE TABLE merge_group_anime(
+    _id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    group_id INTEGER NOT NULL,
+    anime_id INTEGER NOT NULL,
+    source_priority INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(group_id) REFERENCES merge_group (_id)
+    ON DELETE CASCADE,
+    FOREIGN KEY(anime_id) REFERENCES animes (_id)
+    ON DELETE CASCADE,
+    UNIQUE(anime_id)
+);
+
+CREATE INDEX merge_group_anime_group_id_index ON merge_group_anime(group_id);
+CREATE INDEX merge_group_anime_anime_id_index ON merge_group_anime(anime_id);
