@@ -13,7 +13,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import logcat.LogPriority
 import tachiyomi.core.common.util.lang.launchIO
+import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.source.interactor.DeleteFeedSavedSearchById
 import tachiyomi.domain.source.interactor.DeleteFeedSavedSearchCategory
 import tachiyomi.domain.source.interactor.GetFeedSavedSearchCategories
@@ -27,6 +29,7 @@ import tachiyomi.domain.source.model.FeedSavedSearch
 import tachiyomi.domain.source.model.FeedSavedSearchCategory
 import tachiyomi.domain.source.model.FeedSavedSearchUpdate
 import tachiyomi.domain.source.model.SavedSearch
+import tachiyomi.domain.source.service.FeedLimits
 import tachiyomi.domain.source.service.SourceManager
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -139,6 +142,19 @@ class FeedManageScreenModel(
         screenModelScope.launchIO {
             // Get max order in new category to append at end
             val targetFeed = getFeedSavedSearchGlobal.await(newCategoryId)
+            // ANZ -->
+            // Checked BEFORE the delete below: this move is implemented as delete + re-insert, so
+            // leaving the cap to InsertFeedSavedSearch alone would delete the entry and then refuse
+            // to re-insert it. The entry stays in its current tab instead.
+            if (targetFeed.size >= FeedLimits.MAX_SOURCES_PER_TAB) { // ANZ
+                logcat(LogPriority.WARN) {
+                    "Feed tab $newCategoryId is full " +
+                        "(max ${FeedLimits.MAX_SOURCES_PER_TAB}); entry ${feed.id} stays in " +
+                        "category ${feed.category}"
+                }
+                return@launchIO
+            }
+            // ANZ <--
             val nextOrder = (targetFeed.maxOfOrNull { it.feedOrder } ?: -1) + 1
 
             // Delete from old category (or update)
